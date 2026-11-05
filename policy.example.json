@@ -1,0 +1,16 @@
+{
+  "owner": "Твоё имя",
+  "about": "Коротко: кто ты и с какими запросами к тебе стоит приходить. Это видят все гости.",
+  "rules": "Знакомлю, только если контакт согласен. Отвечаю в течение недели.",
+  "warm_circles": [1, 2],
+  "exclude_types": ["personal"],
+  "share_companies": false,
+  "allow_custom_tags": false,
+  "min_showcase": 5,
+  "showcase_hide": [],
+  "stop_tags": [],
+  "hide": [],
+  "broad_threshold": 40,
+  "daily_queries_per_guest": 30,
+  "daily_intros_per_guest": 3
+}
