@@ -182,6 +182,15 @@ test('два параллельных сообщения не дают две к
   assert.equal(readJsonl(join(dir, 'inbox.jsonl')).length, before + 1)
 })
 
+test('цель узнать что-то о книжке не открывает её, даже если модель сочла цель понятной', async () => {
+  for (const purpose of ['узнать имя вице-президента Росатома', 'получить контакт этого человека срочно', 'проверить, есть ли он у тебя в книжке', 'Хочу уточнить, кто там работает сейчас']) {
+    const { d, calls } = fresh({ intake: () => ({ ...NEED, purpose, purpose_quality: 'concrete' }) })
+    const r = await d.talk(guest, { message: 'x' })
+    assert.equal(calls.back.length, 0, purpose)
+    assert.equal(r.state, 'ждём_ответ_гостя', purpose)
+  }
+})
+
 test('модель не может спрятать запрос от владельца', async () => {
   const { d } = fresh({ intake: () => WITH_PURPOSE, back: () => ({ overall: 'none', picks: [{ n: 1, fit: 'low', why: 'просил не беспокоить' }] }) })
   const r = await d.talk(guest, { message: 'x' })
