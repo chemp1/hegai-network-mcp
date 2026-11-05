@@ -1,6 +1,6 @@
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -197,6 +197,25 @@ test('модель не может спрятать запрос от владе
   assert.equal(r.state, 'передано_владельцу')
   assert.equal(readJsonl(join(dir, 'inbox.jsonl')).find((x) => x.ref === r.ref).card.overall, 'none')
   assert.equal(Object.values(d.convs)[0].trace[0].intent, 'passed_some')
+})
+
+test('токен без --desk приёмную не открывает', async () => {
+  const add = (...a) => /Bearer (nb_[\w-]+)/.exec(run('scripts/guests.mjs', 'add', ...a, '--url', 'http://x/mcp'))[1]
+  const plain = add('Обычный')
+  const withDesk = add('С приёмной', '--desk')
+  const port = 19000 + Math.floor(Math.random() * 1000)
+  const proc = spawn('node', ['scripts/server.mjs', '--port', String(port), '--desk'], {
+    env: { ...process.env, NETWORK_MCP_DATA: dir, NETWORK_LLM_BASE_URL: 'http://127.0.0.1:9', NETWORK_LLM_KEY: 'x', NETWORK_LLM_MODEL: 'x' },
+    stdio: ['ignore', 'pipe', 'inherit'],
+  })
+  await new Promise((res) => proc.stdout.once('data', res))
+  const post = (t) => fetch(`http://127.0.0.1:${port}/mcp`, { method: 'POST', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }) })
+  try {
+    assert.equal((await post(plain)).status, 403)
+    assert.equal((await post(withDesk)).status, 200)
+  } finally {
+    proc.kill()
+  }
 })
 
 test('если модель упала, гость получает готовую фразу без данных книжки', async () => {

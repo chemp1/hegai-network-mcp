@@ -36,8 +36,10 @@ export NETWORK_LLM_BASE_URL=https://api.example.com/v1
 export NETWORK_LLM_KEY=...
 export NETWORK_LLM_MODEL=...
 node scripts/server.mjs --desk
-node scripts/guests.mjs add "Андрей" --url https://адрес/mcp --profile "Основатель edtech, участник heg.ai"
+node scripts/guests.mjs add "Андрей" --url https://адрес/mcp --profile "Основатель edtech, участник heg.ai" --desk
 ```
+
+Токен без `--desk` приёмную не откроет: она работает с приватной книжкой, и пускать в неё надо осознанно.
 
 У гостя появляется инструмент `talk_to_owner`, а прямой `ask_network` в этом режиме пропадает. Входящие разбирает `/intro-inbox`: `node scripts/inbox.mjs show <ref>` покажет карточку.
 

@@ -106,6 +106,9 @@ if (args.includes('--stdio')) {
     }
     failed.delete(ip)
 
+    // Приёмная открывает приватную книжку, поэтому токен обычной книжки к ней не подходит.
+    if (desk && !guest.desk) return send(res, 403, { error: 'Этот токен не открывает приёмную. Его выдаёт владелец книжки.' })
+
     // Один гость не должен положить сервер для остальных.
     const slot = perMinute.get(guest.id)
     if (slot && now - slot.t < 60_000 && slot.n >= (guest.per_minute ?? MAX_PER_MINUTE)) return send(res, 429, { error: 'Слишком часто. Подожди минуту.' })
