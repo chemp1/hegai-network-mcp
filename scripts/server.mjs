@@ -91,7 +91,7 @@ if (args.includes('--stdio')) {
 
     // Один гость не должен положить сервер для остальных.
     const slot = perMinute.get(guest.id)
-    if (slot && now - slot.t < 60_000 && slot.n >= MAX_PER_MINUTE) return send(res, 429, { error: 'Слишком часто. Подожди минуту.' })
+    if (slot && now - slot.t < 60_000 && slot.n >= (guest.per_minute ?? MAX_PER_MINUTE)) return send(res, 429, { error: 'Слишком часто. Подожди минуту.' })
     perMinute.set(guest.id, slot && now - slot.t < 60_000 ? { n: slot.n + 1, t: slot.t } : { n: 1, t: now })
 
     const chunks = []
