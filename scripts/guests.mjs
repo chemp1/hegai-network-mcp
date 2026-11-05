@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Гости книжки: у каждого свой токен, отозвать можно любого отдельно.
- *   node scripts/guests.mjs add "Андрей" [--url https://адрес/mcp] [--expires 8h] [--queries 30] [--intros 3] [--per-minute 60]
+ *   node scripts/guests.mjs add "Андрей" [--url https://адрес/mcp] [--expires 8h] [--queries 30] [--intros 3] [--per-minute 60] [--lookups 5] [--profile "что ты знаешь о госте"]
  *   node scripts/guests.mjs list
  *   node scripts/guests.mjs revoke "Андрей"
  * На диске лежит только sha256 от токена: сам токен показывается один раз.
@@ -37,6 +37,8 @@ if (cmd === 'add' && name) {
     queries: opt('queries') ? Number(opt('queries')) : undefined,
     intros: opt('intros') ? Number(opt('intros')) : undefined,
     per_minute: opt('per-minute') ? Number(opt('per-minute')) : undefined,
+    lookups: opt('lookups') ? Number(opt('lookups')) : undefined,
+    profile: opt('profile'),
   }
   writeJson(path, guests)
   const url = opt('url') || readJson(join(dir, 'public-url.json'), {}).url || 'https://АДРЕС_ТУННЕЛЯ/mcp'

@@ -32,6 +32,15 @@ for (let i = 0; i < 400 && people.length < 180; i++) {
   people.push({ first, last, title: `${pick(ROLES)}, ${pick(SPHERES)}, ${pick(CITIES)}`, company: pick(COMPANIES) })
 }
 
+// Истории для демо приёмной. Все люди выдуманы, совпадения случайны.
+const STORIES = [
+  { first: 'Тихон', last: 'Вымыслов', title: 'Вице-президент по цифровым продуктам', company: 'Росатом', circle: 2, reason: 'Учились вместе. Созваниваемся раз в пару месяцев. Занимается цифровыми продуктами и смотрит пилоты, но просил не присылать ему продажи и холодные питчи.' },
+  { first: 'Ульяна', last: 'Придумкина', title: 'Менеджер проектов', company: 'Росатом', circle: 3, reason: 'Виделись один раз на конференции, больше не общались.' },
+  { first: 'Мирон', last: 'Небылицын', title: 'Venture Partner, Дубай', company: 'Сказка Капитал', circle: 1, reason: 'Близкий партнёр, вместе смотрели сделки. Сейчас ищет AI-проекты на посевной стадии, сам просил присылать сильных фаундеров.' },
+  { first: 'Злата', last: 'Условнова', title: 'Performance Marketing Lead, подписочные продукты', company: 'Ромашка', circle: 2, reason: 'Помогала нам с трафиком. Сейчас перегружена, но за интересный продукт берётся.' },
+]
+for (const st of STORIES) people.unshift(st)
+
 mkdirSync(join(dir, 'crm'), { recursive: true })
 const csv = [
   'Notes:',
@@ -44,12 +53,12 @@ writeFileSync(join(dir, 'Connections.csv'), csv)
 
 const crm = {
   owner: { name: 'Демо-владелец' },
-  contacts: people.slice(0, 60).map((p, i) => ({
+  contacts: people.slice(0, 64).map((p, i) => ({
     id: String(1000 + i),
     name: `${p.first} ${p.last}`,
-    circle_level: 1 + (i % 3),
-    circle_type: i % 15 === 0 ? 'personal' : 'partner',
-    reason: 'выдуманный диалог',
+    circle_level: p.circle ?? 1 + (i % 3),
+    circle_type: !p.circle && i % 15 === 0 ? 'personal' : 'partner',
+    reason: p.reason || 'выдуманный диалог',
   })),
 }
 writeFileSync(join(dir, 'crm', 'circles.json'), JSON.stringify(crm, null, 2))

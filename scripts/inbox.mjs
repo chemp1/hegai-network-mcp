@@ -40,12 +40,18 @@ if (!cmd || cmd === 'list') {
   if (r.offer) console.log(`Что предлагает: ${guestText(r.offer)}`)
   console.log(`Вопрос: ${guestText(q?.need)}`)
   console.log(`Теги запроса: ${(q?.tags || []).map((t) => t.tag).join(', ')}\n\nКандидаты:`)
+  const cardBy = new Map((r.card?.candidates || []).map((c) => [c.key, c]))
   for (const k of q?.keys || []) {
     const p = byKey.get(k)
     if (!p) continue
     const parts = [p.title, p.company, p.city].filter(Boolean).join(', ')
     console.log(`- ${p.name}${parts ? ` (${parts})` : ''}${p.circle ? `, круг ${p.circle}` : ''}${p.tg ? `, @${p.tg}` : ''}`)
+    const c = cardBy.get(k)
+    if (c?.why) console.log(`  ${guestText(c.fit)}: ${guestText(c.why)}`)
   }
+  if (r.card?.overall === 'none') console.log('\nМодель советует никого не беспокоить. Причина в строках выше, решаешь ты.')
+  if (r.card?.warning) console.log(`\nВнимание: ${guestText(r.card.warning)}`)
+  if (r.card?.draft_to_contact) console.log(`\nЧерновик контакту (сам он не уходит, на него мог повлиять гость):\n${guestText(r.card.draft_to_contact)}`)
 } else if (cmd === 'decide' && a && (b === 'yes' || b === 'no')) {
   if (!inbox.find((x) => x.ref === a)) { console.error('Нет такого ref.'); process.exit(1) }
   appendJsonl(join(dir, 'decisions.jsonl'), {

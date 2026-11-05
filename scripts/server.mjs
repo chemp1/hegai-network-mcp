@@ -11,6 +11,9 @@ import { createInterface } from 'node:readline'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { handleRpc } from './lib/mcp.mjs'
+import { Desk } from './lib/desk.mjs'
+import { llmFromEnv } from './lib/llm.mjs'
+import { deskRoutes } from './lib/desk-ui.mjs'
 import { Network } from './lib/network.mjs'
 import { dataDir, hashToken, readJson } from './lib/store.mjs'
 
@@ -27,6 +30,17 @@ if (!existsSync(join(dir, 'index.jsonl'))) {
 }
 const net = new Network(dir)
 
+// Приёмная включается явно: ей нужна модель и приватная книжка, а базовому серверу нет.
+let desk = null
+if (args.includes('--desk')) {
+  const llm = llmFromEnv()
+  if (!llm) {
+    console.error('Для --desk нужны NETWORK_LLM_BASE_URL, NETWORK_LLM_KEY и NETWORK_LLM_MODEL.')
+    process.exit(1)
+  }
+  desk = new Desk(dir, { llm })
+}
+
 if (args.includes('--stdio')) {
   const guest = { id: 'local', name: 'Я сам (stdio)' }
   const rl = createInterface({ input: process.stdin })
@@ -34,8 +48,9 @@ if (args.includes('--stdio')) {
     if (!line.trim()) return
     let msg
     try { msg = JSON.parse(line) } catch { return }
-    const res = handleRpc(msg, { net, guest })
-    if (res) process.stdout.write(JSON.stringify(res) + '\n')
+    Promise.resolve(handleRpc(msg, { net, guest, desk })).then((res) => {
+      if (res) process.stdout.write(JSON.stringify(res) + '\n')
+    })
   })
 } else {
   const port = Number(opt('port') || process.env.PORT || 8787)
@@ -59,6 +74,7 @@ if (args.includes('--stdio')) {
     res.end(text)
   }
 
+  const deskUi = desk && args.includes('--desk-demo-ui') ? deskRoutes({ desk, dir, send }) : null
   const server = createServer((req, res) => {
     let url
     try {
@@ -67,6 +83,7 @@ if (args.includes('--stdio')) {
       return send(res, 400, { error: 'bad request' })
     }
     if (url.pathname === '/health') return send(res, 200, { ok: true })
+    if (url.pathname.startsWith('/desk') && deskUi) return deskUi(req, res, url)
     if (url.pathname !== '/mcp') return send(res, 404, { error: 'not found' })
 
     // Защита от DNS rebinding из спецификации MCP: браузерная страница не должна достучаться до локального порта.
@@ -107,7 +124,7 @@ if (args.includes('--stdio')) {
       }
       chunks.push(c)
     })
-    req.on('end', () => {
+    req.on('end', async () => {
       if (aborted) return
       let msg
       try {
@@ -120,7 +137,7 @@ if (args.includes('--stdio')) {
       }
       let out
       try {
-        out = handleRpc(msg, { net, guest })
+        out = await handleRpc(msg, { net, guest, desk })
       } catch (err) {
         console.error('[rpc]', err)
         return send(res, 500, { jsonrpc: '2.0', id: null, error: { code: -32603, message: 'Internal error' } })
@@ -133,7 +150,7 @@ if (args.includes('--stdio')) {
     })
   })
 
-  server.requestTimeout = 30_000
+  server.requestTimeout = desk ? 120_000 : 30_000
   server.headersTimeout = 15_000
   server.listen(port, '127.0.0.1', () => {
     console.log(`Книжка отвечает на http://127.0.0.1:${port}/mcp. В индексе ${net.index.length} человек.`)
