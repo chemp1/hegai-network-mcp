@@ -168,6 +168,14 @@ test('режим без id: платформа сама отвечает 200 т�
   }
 })
 
+test('вопрос с экрана только владельцу и только с нашего адреса', async () => {
+  const ask = (headers) => fetch(`http://127.0.0.1:${port}/ask`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: ORIGIN, ...headers }, body: JSON.stringify({ message: 'x' }) })
+  assert.equal((await ask({})).status, 401)
+  assert.equal((await ask({ Cookie: 'session=member-token' })).status, 403)
+  assert.equal((await ask({ ...owner, Origin: 'https://evil.example' })).status, 403)
+  assert.equal((await ask(owner)).status, 404, 'приёмная в этом запуске не подключена')
+})
+
 test('сервис гостей про экран не знает, код экрана не отправляет сообщений', () => {
   const code = readFileSync(new URL('../scripts/owner-ui.mjs', import.meta.url), 'utf8')
   assert.ok(!/api\.telegram|sendMessage|smtp/i.test(code))
