@@ -133,12 +133,12 @@ export class Desk {
       for (const f of found) (byFacet[f.facet] ||= []).push(f.tag)
       rows = rows.filter((p) => Object.entries(byFacet).every(([facet, tags]) => (p.tags?.[facet] || []).some((t) => tags.includes(t) && !stop.has(norm(t)))))
     }
-    if (need.geo) {
-      const geo = this.find(need.geo).filter((f) => f.facet === 'geo').map((f) => f.tag)
-      if (geo.length) {
-        const inGeo = rows.filter((p) => (p.tags?.geo || []).some((t) => geo.includes(t)))
-        if (inGeo.length) rows = inGeo
-      }
+    // Город ищем и в словах гостя: разбор на втором ходу мог его потерять. Если там такого города нет, не отрезаем никого.
+    const geoText = [need.geo, need.who_needed, ...(need.history || []).filter((h) => h.from === 'guest').map((h) => h.text)].filter(Boolean).join(' . ')
+    const geo = this.find(geoText).filter((f) => f.facet === 'geo').map((f) => f.tag)
+    if (geo.length) {
+      const inGeo = rows.filter((p) => (p.tags?.geo || []).some((t) => geo.includes(t)))
+      if (inGeo.length) rows = inGeo
     }
     if (need.top_level) {
       const top = rows.filter((p) => TOP.test(p.title || ''))

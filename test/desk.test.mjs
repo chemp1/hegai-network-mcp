@@ -233,6 +233,17 @@ test('цель не забывается, а непонятный человек
   assert.equal(b.state, 'передано_владельцу')
 })
 
+test('город из первого сообщения не теряется', () => {
+  const { d } = fresh()
+  d.book()
+  d._book = [
+    { id: '1', name: 'А А', title: 'инвестор', tags: { role: ['инвестор'], geo: ['казахстан'] } },
+    { id: '2', name: 'Б Б', title: 'инвестор', tags: { role: ['инвестор'], geo: ['дубай'] } },
+  ]
+  const rows = d.lookup({ company_variants: [], roles_text: 'инвестор', who_needed: 'инвестор', geo: null, history: [{ from: 'guest', text: 'Нужен инвестор в Дубае' }] })
+  assert.deepEqual(rows.map((r) => r.p.id), ['2'])
+})
+
 test('если модель упала, гость получает готовую фразу без данных книжки', async () => {
   const { d } = fresh({ intake: () => { throw new Error('boom') }, front: () => { throw new Error('boom') } })
   const r = await d.talk(guest, { message: 'x' })
