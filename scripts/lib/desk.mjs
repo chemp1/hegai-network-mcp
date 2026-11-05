@@ -21,6 +21,7 @@ const TOP = /\b(ceo|cfo|cto|coo|cmo|cpo|vp|vice president|president|chief|head o
 
 export const INTENTS = {
   ask_need: 'Гость не сказал, кто ему нужен. Спроси: какой человек нужен и в какой компании или отрасли.',
+  ask_who: 'Задача понятна, но непонятно, какой человек нужен. Ты НЕ знаешь, есть ли такой в книжке. Спроси: какая роль и в какой компании или отрасли, например директор по цифре в промышленности.',
   ask_purpose: 'Гость сказал, кто нужен, но не сказал зачем. Ты НЕ знаешь, есть ли такой человек в книжке, и не делай вид, что знаешь. Скажи, что с такими запросами владелец может помочь, но сначала нужно понять задачу. Спроси: зачем нужен этот разговор, какой результат нужен и что интересного будет собеседнику.',
   ask_purpose_better: 'Цель пока слишком общая, чтобы беспокоить человека. Ты НЕ знаешь, есть ли такой человек в книжке. Попроси конкретнее: какой результат нужен и почему собеседнику будет интересно.',
   passed_strong: 'В книжке есть кого спросить. Запрос передан владельцу, он сам решит, беспокоить ли человека, и вернётся с ответом. Ничего больше о человеке ты не знаешь.',
@@ -35,6 +36,7 @@ const EXTRACTION = /(узнать|получить|выяснить|назват
 
 const FALLBACK = {
   ask_need: 'Подскажи, какой человек тебе нужен: роль и компания или отрасль.',
+  ask_who: 'Задачу понял. Какой человек нужен: роль и компания или отрасль?',
   ask_purpose: 'С такими запросами помочь бывает можно, но сначала нужно понять задачу. Зачем тебе этот разговор, какой результат нужен и что в нём будет интересного собеседнику?',
   ask_purpose_better: 'Пока слишком общо, чтобы кого-то беспокоить. Какой конкретно результат тебе нужен и почему собеседнику будет интересно?',
   passed_strong: 'Есть кого спросить. Передал запрос, владелец сам решит, беспокоить ли человека, и вернётся с ответом.',
@@ -125,7 +127,8 @@ export class Desk {
       })
     } else {
       const found = this.find(`${need.roles_text} ${need.who_needed}`).filter((f) => f.facet === 'role' || f.facet === 'industry' || f.facet === 'skill')
-      if (!found.length) return []
+      // Не поняли, кого искать. Это ещё не «в книжке нет»: зависит только от словаря, а не от контактов.
+      if (!found.length) return null
       const byFacet = {}
       for (const f of found) (byFacet[f.facet] ||= []).push(f.tag)
       rows = rows.filter((p) => Object.entries(byFacet).every(([facet, tags]) => (p.tags?.[facet] || []).some((t) => tags.includes(t) && !stop.has(norm(t)))))
@@ -342,18 +345,18 @@ export class Desk {
       return 'ask_purpose_better'
     }
 
+    const candidates = this.lookup(conv)
+    if (candidates === null) return 'ask_who'
+
     const max = guest.lookups ?? this.policy.desk_lookups_per_day ?? 5
     if (this.lookupsToday(guest) >= max) return 'limit'
     conv.lookups.push(new Date(this.now()).toISOString())
 
-    const candidates = this.lookup(conv)
     trace.candidates_count_private = candidates.length
     if (!candidates.length) {
       // Та же цена по времени, что и у отказа закулисья: по задержке не должно быть видно, что кандидаты были.
       await this.backstage(conv, guest, [])
-      // Иначе следующий запрос этого разговора унаследует чужую цель.
-      conv.purpose = null
-      conv.purpose_quality = 'none'
+      // Цель остаётся: гость может уточнить, кто нужен, и не отвечать на «зачем» второй раз. Перебор сдерживает лимит.
       return 'none'
     }
     const back = await this.backstage(conv, guest, candidates)

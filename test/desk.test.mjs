@@ -218,6 +218,21 @@ test('токен без --desk приёмную не открывает', async 
   }
 })
 
+test('цель не забывается, а непонятный человек не равен «не нашлось»', async () => {
+  let n = 0
+  const { d, calls } = fresh({ intake: () => (++n === 1
+    ? { who_needed: 'человек, который решает про цифру', company_variants: [], roles_text: 'решает про цифру', purpose: 'показать пилот по документации за две недели', purpose_quality: 'concrete' }
+    : { who_needed: 'топ-менеджер из Росатома', company_variants: ['Росатом'], top_level: true, purpose_quality: 'none' }) })
+  const a = await d.talk(guest, { message: 'пилот' })
+  const conv = Object.values(d.convs)[0]
+  assert.equal(conv.trace[0].intent, 'ask_who')
+  assert.equal(conv.lookups.length, 0, 'книжку не открывали и лимит не тратили')
+  assert.equal(calls.back.length, 0)
+  const b = await d.talk(guest, { message: 'топ из Росатома', conversation_id: a.conversation_id })
+  assert.equal(conv.trace[1].intent, 'passed_strong')
+  assert.equal(b.state, 'передано_владельцу')
+})
+
 test('если модель упала, гость получает готовую фразу без данных книжки', async () => {
   const { d } = fresh({ intake: () => { throw new Error('boom') }, front: () => { throw new Error('boom') } })
   const r = await d.talk(guest, { message: 'x' })
