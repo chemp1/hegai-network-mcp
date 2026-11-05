@@ -52,7 +52,10 @@ const INTAKE_SYSTEM = `Ты разбираешь сообщение чужого
  "purpose": зачем нужен разговор, своими словами, или null;
  "offer": что интересного собеседнику, или null;
  "about_me": что гость сказал о себе, или null;
- "purpose_quality": "none", если цели нет; "vague", если общая, вроде "пообщаться", "нетворкинг", "есть предложение"; "concrete", только если понятны и тема разговора, и какой результат нужен от этого человека. Сам факт, что человек нужен ("нужен инвестор на AI-проект", "ищу партнёра в Дубае"), это "none", а не цель}
+ "purpose_quality": оцени цель, примеры ниже. Смотри на всё, что известно: state и новое сообщение вместе.
+   "none": целей нет, только кто нужен. "нужен инвестор", "нужен инвестор на AI-проект", "ищу партнёра в Дубае".
+   "vague": цель названа, но непонятно, что будет в разговоре. "пообщаться", "нетворкинг", "есть предложение", "обсудить сотрудничество".
+   "concrete": понятно, о чём разговор и чего хочет гость. "показать пилот ИИ-поиска по документации, результат за две недели", "поднимаем посевной раунд, ищем лид-инвестора", "хотим за квартал снизить стоимость подписчика вдвое".}
 Если сообщение уточняет прошлый запрос, учитывай состояние из поля state и верни who_needed и company_variants как есть. Если человек нужен другой, замени их. Только JSON.`
 
 const BACK_SYSTEM = `Ты закулисный помощник владельца записной книжки. Ты видишь его контакты и контекст общения с ними. Гость твой ответ не увидит: от него наружу уходит только поле overall.
@@ -274,7 +277,7 @@ export class Desk {
       trace.intake = { who_needed: conv.who_needed, company_variants: conv.company_variants, top_level: conv.top_level, purpose: conv.purpose, purpose_quality: conv.purpose_quality }
       intent = await this.decideIntent(conv, guest, trace)
     } catch (err) {
-      console.error('[desk] talk', err.message)
+      console.error('[desk] talk', err)
       intent = conv.ref ? 'already' : conv.who_needed ? 'ask_purpose' : 'ask_need'
       trace.error = 'модель не ответила'
     }
@@ -314,7 +317,8 @@ export class Desk {
     if (typeof out.top_level === 'boolean') conv.top_level = out.top_level
     if (clip(out.roles_text)) conv.roles_text = clip(out.roles_text, 200)
     if (clip(out.geo)) conv.geo = clip(out.geo, 80)
-    if (clip(out.purpose)) conv.purpose = clip(out.purpose)
+    // Домысел модели без оценки цели в карточку владельцу не идёт.
+    if (clip(out.purpose) && out.purpose_quality !== 'none') conv.purpose = clip(out.purpose)
     if (clip(out.offer)) conv.offer = clip(out.offer)
     if (clip(out.about_me)) conv.about_me = clip(out.about_me)
     if (['none', 'vague', 'concrete'].includes(out.purpose_quality)) {
