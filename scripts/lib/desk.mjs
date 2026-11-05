@@ -117,6 +117,7 @@ export class Desk {
     const nameKey = (x) => norm(x).split(' ').sort().join(' ')
     const hidden = new Set(this.policy.hide.flatMap((h) => [h, nameKey(h)]))
     const stop = new Set(this.policy.stop_tags.map(norm))
+    let industryHit = () => false
     let rows = book.filter((p) => p.share !== 'no' && !excluded.has(p.type) && !hidden.has(nameKey(p.name)) && !hidden.has(p.id))
 
     const variants = need.company_variants.map(norm).filter((v) => v.length >= 3)
@@ -131,7 +132,11 @@ export class Desk {
       if (!found.length) return null
       const byFacet = {}
       for (const f of found) (byFacet[f.facet] ||= []).push(f.tag)
-      rows = rows.filter((p) => Object.entries(byFacet).every(([facet, tags]) => (p.tags?.[facet] || []).some((t) => tags.includes(t) && !stop.has(norm(t)))))
+      const has = (p, facet) => (p.tags?.[facet] || []).some((t) => byFacet[facet]?.includes(t) && !stop.has(norm(t)))
+      // Обязательно то, кем человек работает. Отрасль только поднимает выше: инвестор из нужного города важнее инвестора из нужной отрасли.
+      const must = ['role', 'skill'].filter((f) => byFacet[f])
+      rows = rows.filter((p) => (must.length ? must.every((f) => has(p, f)) : has(p, 'industry')))
+      industryHit = (p) => has(p, 'industry')
     }
     // Город ищем и в словах гостя: разбор на втором ходу мог его потерять. Если там такого города нет, не отрезаем никого.
     const geoText = [need.geo, need.who_needed, ...(need.history || []).filter((h) => h.from === 'guest').map((h) => h.text)].filter(Boolean).join(' . ')
@@ -145,7 +150,7 @@ export class Desk {
       if (top.length) rows = top
     }
     const warm = (p) => p.can_intro === true || (p.can_intro !== false && this.policy.warm_circles.includes(p.circle))
-    return rows.map((p) => ({ p, warm: warm(p) })).sort((a, b) => Number(b.warm) - Number(a.warm) || (a.p.circle ?? 9) - (b.p.circle ?? 9)).slice(0, 8)
+    return rows.map((p) => ({ p, warm: warm(p) })).sort((a, b) => Number(b.warm) - Number(a.warm) || Number(industryHit(b.p)) - Number(industryHit(a.p)) || (a.p.circle ?? 9) - (b.p.circle ?? 9)).slice(0, 8)
   }
 
   contextOf(p) {

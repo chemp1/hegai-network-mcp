@@ -24,7 +24,7 @@
 git clone https://github.com/chemp1/hegai-network-mcp.git
 cd hegai-network-mcp
 npm run demo    # выдуманная книжка на 164 человека
-npm test        # 47 проверок, в том числе что имена не утекают
+npm test        # 48 проверок, в том числе что имена не утекают
 claude
 ```
 

@@ -244,6 +244,19 @@ test('город из первого сообщения не теряется', 
   assert.deepEqual(rows.map((r) => r.p.id), ['2'])
 })
 
+test('город важнее отрасли, отрасль поднимает выше', () => {
+  const { d } = fresh()
+  d.book()
+  d._book = [
+    { id: '1', name: 'А А', title: 'инвестор', can_intro: true, tags: { role: ['инвестор'], industry: ['ии'], geo: ['казахстан'] } },
+    { id: '2', name: 'Б Б', title: 'инвестор', can_intro: true, tags: { role: ['инвестор'], geo: ['дубай'] } },
+    { id: '3', name: 'В В', title: 'инвестор', can_intro: true, tags: { role: ['инвестор'], industry: ['ии'], geo: ['дубай'] } },
+    { id: '4', name: 'Г Г', title: 'юрист', can_intro: true, tags: { role: ['юрист'], industry: ['ии'], geo: ['дубай'] } },
+  ]
+  const rows = d.lookup({ company_variants: [], roles_text: 'инвестор в ИИ', who_needed: 'инвестор', geo: 'Дубай', history: [] })
+  assert.deepEqual(rows.map((r) => r.p.id), ['3', '2'])
+})
+
 test('если модель упала, гость получает готовую фразу без данных книжки', async () => {
   const { d } = fresh({ intake: () => { throw new Error('boom') }, front: () => { throw new Error('boom') } })
   const r = await d.talk(guest, { message: 'x' })
